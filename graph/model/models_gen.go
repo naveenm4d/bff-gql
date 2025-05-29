@@ -2,12 +2,33 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+	"time"
+
+	"github.com/google/uuid"
+)
+
 type Mutation struct {
 }
 
 type NewTodo struct {
 	Text   string `json:"text"`
 	UserID string `json:"userId"`
+}
+
+type Post struct {
+	ID        uuid.UUID  `json:"id"`
+	AuthorID  uuid.UUID  `json:"author_id"`
+	Slug      string     `json:"slug"`
+	Title     string     `json:"title"`
+	Content   string     `json:"content"`
+	Status    PostStatus `json:"status"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 type Query struct {
@@ -17,10 +38,61 @@ type Todo struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
 	Done bool   `json:"done"`
-	User *User  `json:"user"`
 }
 
-type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+type PostStatus string
+
+const (
+	PostStatusDrafted   PostStatus = "Drafted"
+	PostStatusPublished PostStatus = "Published"
+	PostStatusArchived  PostStatus = "Archived"
+)
+
+var AllPostStatus = []PostStatus{
+	PostStatusDrafted,
+	PostStatusPublished,
+	PostStatusArchived,
+}
+
+func (e PostStatus) IsValid() bool {
+	switch e {
+	case PostStatusDrafted, PostStatusPublished, PostStatusArchived:
+		return true
+	}
+	return false
+}
+
+func (e PostStatus) String() string {
+	return string(e)
+}
+
+func (e *PostStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PostStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PostStatus", str)
+	}
+	return nil
+}
+
+func (e PostStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PostStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PostStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

@@ -1,0 +1,16 @@
+type Post {
+  id: UUID!
+  author_id: UUID!
+  slug: String!
+  title: String!
+  content: String!
+  status: PostStatus!
+  created_at: Time!
+  updated_at: Time
+}
+
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+}

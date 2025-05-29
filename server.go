@@ -10,8 +10,10 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/naveenm4d/bff-gql/graph"
 	"github.com/vektah/gqlparser/v2/ast"
+
+	graph "github.com/naveenm4d/bff-gql/graph/model"
+	resolvers "github.com/naveenm4d/bff-gql/graph/resolvers"
 )
 
 const defaultPort = "8000"
@@ -22,7 +24,7 @@ func main() {
 		port = defaultPort
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &resolvers.Resolver{}}))
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
