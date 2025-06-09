@@ -6,14 +6,13 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/naveenm4d/bff-gql/graph/model"
 )
 
 // GetPosts is the resolver for the getPosts field.
 func (r *queryResolver) GetPosts(ctx context.Context) ([]*model.Post, error) {
-	panic(fmt.Errorf("not implemented: GetPosts - getPosts"))
+	return r.QueryService.GetPosts(ctx)
 }
 
 // Query returns model.QueryResolver implementation.
