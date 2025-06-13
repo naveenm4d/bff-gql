@@ -13,6 +13,6 @@ func GetPost(post *blogpb.Post) *model.Post {
 		Slug:     post.GetSlug(),
 		Title:    post.GetTitle(),
 		Content:  post.GetContent(),
-		Status:   model.PostStatus(post.GetStatus()),
+		Status:   model.PostStatus(post.Status.String()),
 	}
 }
