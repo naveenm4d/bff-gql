@@ -1,0 +1,87 @@
+name: Build & Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment"
+        required: true
+        type: choice
+        options:
+          - Phoenix
+          - Kraken
+
+jobs:
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+      BRANCH: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current branch name
+        id: branch
+        run: echo "name=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate environment vs. branch
+        run: |
+          echo "Selected environment: $ENVIRONMENT"
+          echo "Running from branch: $BRANCH"
+
+          if [[ "$ENVIRONMENT" == "Kraken" && "$BRANCH" != "main" ]]; then
+            echo "Error: Cannot release unstable branches to production."
+            exit 1
+          fi
+
+      - name: Get tag or generate pseudo-tag for feature branches
+        id: tag
+        run: |
+          git fetch --tags
+
+          if [[ "$BRANCH" == "main" || "$BRANCH" == "develop" ]]; then
+            TAG=$(git describe --tags --abbrev=0)
+          else
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-')
+            TAG="${SAFE_BRANCH}-${SHORT_SHA}"
+          fi
+
+          echo "Using tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24
+
+      - name: Run make build
+        run: make build
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/blog-app:bff-gql-$TAG"
+
+          echo "Building Docker image: $IMAGE"
+          docker build -t $IMAGE .
+
+      - name: Push Docker image
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/blog-app:bff-gql-$TAG"
+
+          echo "Pushing Docker image: $IMAGE"
+          docker push $IMAGE

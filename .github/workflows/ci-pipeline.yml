@@ -1,0 +1,97 @@
+name: Validation & Versioning
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint:
+    name: Run Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Run lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.5
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Run make test
+        run: make test
+
+  tag:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    name: Tag version
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current branch
+        id: branch
+        run: |
+          echo "branch_name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Get latest version tag
+        id: latest_tag
+        run: |
+          tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $tag"
+          echo "tag=${tag#v}" >> $GITHUB_OUTPUT
+
+      - name: Increment version
+        id: bump
+        run: |
+          RAW_VERSION="${{ steps.latest_tag.outputs.tag }}"
+          CLEAN_VERSION="${RAW_VERSION%%-*}"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CLEAN_VERSION"
+
+          if [[ "${{ steps.branch.outputs.branch_name }}" == "develop" ]]; then
+            # Count existing dev tags
+            COUNT=$(git tag --list "v$MAJOR.$MINOR.$PATCH-dev.*" | wc -l)
+            DEV_SUFFIX=$((COUNT + 1))
+            NEW_VERSION="v$MAJOR.$MINOR.$PATCH-dev.$DEV_SUFFIX"
+          else
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          fi
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create and push new tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.bump.outputs.new_version }}" -m "Release ${{ steps.bump.outputs.new_version }}"
+          git push origin "${{ steps.bump.outputs.new_version }}"
