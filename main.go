@@ -61,16 +61,16 @@ func main() {
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
 
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
+	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000)) //nolint:mnd
 
 	srv.Use(extension.Introspection{})
 	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New[string](100),
+		Cache: lru.New[string](100), //nolint:mnd
 	})
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", *config.Config.HTTPPort)
-	log.Fatal(http.ListenAndServe(":"+*config.Config.HTTPPort, nil))
+	log.Fatal(http.ListenAndServe(":"+*config.Config.HTTPPort, nil)) //nolint:gosec,gocritic
 }
