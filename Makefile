@@ -1,4 +1,4 @@
-BIN?=blog-svc
+BIN?=bff-gql
 REGISTRY?=localhost
 
 default: run
