@@ -1,10 +1,11 @@
-BIN?=bff-gql
+BIN?=blog-svc
+REGISTRY?=localhost
 
 default: run
 .PHONY : build run
 
 build:
-	go build -o build/${BIN}
+	GOOS=linux GOARCH=arm64 go build -o build/${BIN}
 
 build-proto:
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative --experimental_allow_proto3_optional proto/blogs_svc.proto
@@ -12,9 +13,6 @@ build-proto:
 clean:
 	go clean
 	rm -rf build
-
-gen:
-	go run github.com/99designs/gqlgen generate.
 	
 lint:
 	golangci-lint run -c .golangci.yml
